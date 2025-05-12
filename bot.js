@@ -1,9 +1,20 @@
+// Remove the node-cron import at the top
 const express = require('express');
 const axios = require('axios');
 const { createClient } = require('@supabase/supabase-js');
-const cron = require('node-cron');
 const rateLimit = require('express-rate-limit');
 const moment = require('moment');
+
+// ... (keep all other code the same until the scheduleDailyReport function)
+
+// Replace the scheduleDailyReport function with this:
+function scheduleDailyReport() {
+  console.log('Daily report scheduling is disabled in this version');
+  // Alternative: You could implement a simple timeout-based scheduler
+  // setInterval(() => handleStatsCommand(ADMIN_CHAT_ID), 24 * 60 * 60 * 1000);
+}
+
+// ... (keep all other code the same)
 
 const app = express();
 app.use(express.json());
