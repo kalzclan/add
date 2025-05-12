@@ -73,3 +73,14 @@ app.listen(PORT, () => {
   console.log(`Bot running on port ${PORT}`);
   console.log(`Webhook URL: ${process.env.RAILWAY_PUBLIC_DOMAIN}/webhook`);
 });
+// Add this route handler
+app.get('/', (req, res) => {
+  res.send(`
+    <h1>Telegram Approval Bot</h1>
+    <p>Bot is running!</p>
+    <ul>
+      <li><a href="/set-webhook">Setup Webhook</a></li>
+      <li>Webhook URL: <code>/webhook</code></li>
+    </ul>
+  `);
+});
