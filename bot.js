@@ -1,26 +1,28 @@
 const express = require('express');
 const axios = require('axios');
-const { createClient } = require('@supabase/supabase-js'); // Add this
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 app.use(express.json());
 
-const BOT_TOKEN = '7971577643:AAFcL38ZrahWxEyyIcz3dO4aC9yq9LTAD5M';
-const ADMIN_CHAT_ID = '1133538088';
-const SUPABASE_URL = 'https://evberyanshxxalxtwnnc.supabase.co'; // Add your Supabase URL
-const SUPABASE_KEY = 'eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2YmVyeWFuc2h4eGFseHR3bm5jIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQwODMwOTcsImV4cCI6MjA1OTY1OTA5N30'; // Replace with your key
+// Environment variables (Railway will inject these)
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY); // Initialize Supabase
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Set webhook (run this once)
+// Webhook setup endpoint
 app.get('/set-webhook', async (req, res) => {
   try {
-    const url = `https://your-deployed-url.vercel.app/webhook`; // ← REPLACE with your actual URL
+    const url = `${process.env.RAILWAY_PUBLIC_DOMAIN}/webhook`;
     const response = await axios.get(
       `https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${url}`
     );
     res.send(response.data);
   } catch (error) {
+    console.error('Webhook setup failed:', error);
     res.status(500).send(error.message);
   }
 });
@@ -34,34 +36,40 @@ app.post('/webhook', async (req, res) => {
       const [action, txId] = update.callback_query.data.split('_');
       const status = action === 'approve' ? 'approved' : 'rejected';
 
-      // 1. Update Supabase
+      // Update Supabase
       const { error } = await supabase
         .from('player_transactions')
-        .update({ status })
+        .update({ 
+          status,
+          processed_at: new Date().toISOString()
+        })
         .eq('id', txId);
 
       if (error) throw error;
 
-      // 2. Send confirmation to Telegram
+      // Telegram API responses
       await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/answerCallbackQuery`, {
         callback_query_id: update.callback_query.id,
         text: `Transaction ${status}!`
       });
 
-      // 3. Update the original message (optional)
       await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/editMessageText`, {
         chat_id: update.callback_query.message.chat.id,
         message_id: update.callback_query.message.message_id,
-        text: `${update.callback_query.message.text}\n\nStatus: ${status}`
+        text: `${update.callback_query.message.text}\n\nStatus: ${status.toUpperCase()}`,
+        reply_markup: { inline_keyboard: [] } // Remove buttons after action
       });
     }
     
     res.send('OK');
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('Webhook processing error:', error);
     res.status(500).send('Error processing request');
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Bot running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Bot running on port ${PORT}`);
+  console.log(`Webhook URL: ${process.env.RAILWAY_PUBLIC_DOMAIN}/webhook`);
+});
